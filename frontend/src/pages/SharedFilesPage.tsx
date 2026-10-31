@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { FolderSync, FileText, RefreshCw, Upload } from 'lucide-react';
-import { fetchSharedFiles, formatBytes } from '../services/api';
+import { FolderSync, FileText, RefreshCw, Upload, Radio } from 'lucide-react';
+import { fetchSharedFiles, formatBytes, announceSharedFiles } from '../services/api';
 import type { SharedFileItem } from '../types';
 
 interface SharedFilesPageProps {
@@ -10,6 +10,8 @@ interface SharedFilesPageProps {
 export const SharedFilesPage: React.FC<SharedFilesPageProps> = ({ onNavigateToSend }) => {
   const [files, setFiles] = useState<SharedFileItem[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [announcing, setAnnouncing] = useState<boolean>(false);
+  const [announceMsg, setAnnounceMsg] = useState<string | null>(null);
 
   const loadFiles = async () => {
     setIsLoading(true);
@@ -20,6 +22,20 @@ export const SharedFilesPage: React.FC<SharedFilesPageProps> = ({ onNavigateToSe
       console.error(e);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleAnnounce = async () => {
+    setAnnouncing(true);
+    setAnnounceMsg(null);
+    try {
+      await announceSharedFiles();
+      setAnnounceMsg('Shared folder catalog broadcast to tracker successfully!');
+      setTimeout(() => setAnnounceMsg(null), 4000);
+    } catch (e: any) {
+      setAnnounceMsg('Failed to broadcast to tracker. Ensure tracker server is up.');
+    } finally {
+      setAnnouncing(false);
     }
   };
 
@@ -45,6 +61,14 @@ export const SharedFilesPage: React.FC<SharedFilesPageProps> = ({ onNavigateToSe
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
           </button>
           <button
+            onClick={handleAnnounce}
+            disabled={announcing}
+            className="px-3.5 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border border-emerald-500/30 font-medium text-xs rounded-xl transition flex items-center gap-2"
+          >
+            <Radio className={`h-3.5 w-3.5 ${announcing ? 'animate-spin' : ''}`} />
+            Broadcast to Tracker
+          </button>
+          <button
             onClick={onNavigateToSend}
             className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-medium text-sm rounded-xl transition flex items-center gap-2"
           >
@@ -53,6 +77,12 @@ export const SharedFilesPage: React.FC<SharedFilesPageProps> = ({ onNavigateToSe
           </button>
         </div>
       </div>
+
+      {announceMsg && (
+        <div className="p-3 bg-indigo-950/40 border border-indigo-800 text-indigo-300 rounded-xl text-xs">
+          {announceMsg}
+        </div>
+      )}
 
       <div className="p-6 bg-slate-900/60 border border-slate-800/80 rounded-2xl">
         {files.length === 0 ? (

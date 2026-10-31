@@ -1,6 +1,26 @@
-import type { NodeStatus, TransferItem, TransferHistoryRecord, SharedFileItem, DownloadedFileItem, AppSettings } from '../types';
+import type { NodeStatus, TransferItem, TransferHistoryRecord, SharedFileItem, DownloadedFileItem, AppSettings, TrackerPeer, TrackerFile } from '../types';
 
 const API_BASE = '/api';
+
+export async function fetchTrackerPeers(): Promise<TrackerPeer[]> {
+  const res = await fetch(`${API_BASE}/tracker/peers`);
+  if (!res.ok) throw new Error('Failed to fetch tracker peers');
+  const data = await res.json();
+  return data.peers || [];
+}
+
+export async function fetchTrackerFiles(query?: string): Promise<TrackerFile[]> {
+  const url = query ? `${API_BASE}/tracker/files?q=${encodeURIComponent(query)}` : `${API_BASE}/tracker/files`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('Failed to search tracker files');
+  const data = await res.json();
+  return data.files || [];
+}
+
+export async function announceSharedFiles(): Promise<void> {
+  const res = await fetch(`${API_BASE}/tracker/announce`, { method: 'POST' });
+  if (!res.ok) throw new Error('Failed to announce files');
+}
 
 export async function fetchStatus(): Promise<NodeStatus> {
   const res = await fetch(`${API_BASE}/status`);

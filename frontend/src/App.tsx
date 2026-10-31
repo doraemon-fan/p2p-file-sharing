@@ -80,7 +80,14 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  const [selectedTargetPeer, setSelectedTargetPeer] = useState<{ host: string; port: number } | null>(null);
+
   const activeTransfersCount = transfers.filter(t => t.status === 'active').length;
+
+  const handleSelectPeerForSend = (host: string, port: number) => {
+    setSelectedTargetPeer({ host, port });
+    setCurrentTab('send');
+  };
 
   return (
     <div className="flex h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
@@ -101,7 +108,11 @@ export const App: React.FC = () => {
           )}
 
           {currentTab === 'send' && (
-            <SendFilesPage transfers={transfers} />
+            <SendFilesPage 
+              transfers={transfers} 
+              initialTargetHost={selectedTargetPeer?.host} 
+              initialTargetPort={selectedTargetPeer?.port} 
+            />
           )}
 
           {currentTab === 'receive' && (
@@ -113,7 +124,10 @@ export const App: React.FC = () => {
           )}
 
           {currentTab === 'peers' && (
-            <PeersPage status={status} />
+            <PeersPage 
+              status={status} 
+              onSelectPeerForSend={handleSelectPeerForSend} 
+            />
           )}
 
           {currentTab === 'shared' && (

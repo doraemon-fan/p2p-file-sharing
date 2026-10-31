@@ -63,3 +63,25 @@ export interface AppSettings {
   shared_dir: string;
   tracker_url: string;
 }
+
+export interface TrackerPeer {
+  peer_id: string;
+  peer_name: string;
+  host: string;
+  port: number;
+  last_heartbeat: number;
+  status: string;
+}
+
+export interface TrackerFile {
+  id: number;
+  file_id: string;
+  filename: string;
+  file_size: number;
+  sha256: string;
+  peer_id: string;
+  peer_name: string;
+  host: string;
+  port: number;
+  announced_at: number;
+}

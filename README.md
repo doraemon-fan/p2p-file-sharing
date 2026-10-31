@@ -10,8 +10,8 @@ A high-performance Peer-to-Peer file sharing application built with a Python TCP
 | :--- | :--- | :--- |
 | **Phase 1** | **Audit & Core TCP Transfer Protocol** (Framing, SHA-256 integrity, safe filenames, overwrite avoidance, connection cleanup) | ✅ **Completed** |
 | **Phase 7** | **React UI Implementation** (Dark-themed dashboard, Send/Receive, WebSockets, REST API, SQLite history) | ✅ **Completed** |
-| **Phase 2** | **Tracker-Based Peer Discovery** (Peer registration, file announcements, healthchecks, file search) | ⏳ Next |
-| **Phase 3** | **File Chunking & Resumable Transfers** (Logical chunk manifests, chunk integrity, resume interrupted downloads) | ⏳ Pending |
+| **Phase 2** | **Tracker-Based Peer Discovery** (Peer registration, file announcements, healthchecks, file search) | ✅ **Completed** |
+| **Phase 3** | **File Chunking & Resumable Transfers** (Logical chunk manifests, chunk integrity, resume interrupted downloads) | ⏳ Next |
 | **Phase 4** | **Multiple Peers & Swarming** (Concurrent multi-peer downloads, peer scheduling, chunk distribution) | ⏳ Pending |
 
 ---
@@ -71,17 +71,21 @@ PeerShare/
 - Python 3.10+
 - Node.js 18+ and npm
 
-### 2. Backend Setup
-```bash
-pip install -r backend/requirements.txt
-```
+### 2. Running Services
 
-Run backend server (starts FastAPI on port 8000 and TCP daemon on port 5000):
+#### A. Central Tracker Service (Coordinates peer discovery)
+```bash
+python backend/app/tracker/server.py
+```
+*(Runs on `http://0.0.0.0:8001` with SQLite database `tracker.db`)*
+
+#### B. PeerShare Backend (Peer node agent & TCP daemon)
 ```bash
 python backend/app/main.py
 ```
+*(Runs on `http://0.0.0.0:8000` with P2P TCP socket daemon on port 5000)*
 
-### 3. Frontend Setup
+#### C. PeerShare React Frontend
 ```bash
 cd frontend
 npm install

@@ -125,6 +125,47 @@ def update_settings(updates: SettingsUpdate):
         config.tracker_url = updates.tracker_url
     return {"status": "updated", "config": config.model_dump()}
 
+@router.get("/tracker/peers")
+def get_tracker_peers():
+    """Retrieve online peers from central tracker."""
+    try:
+        from app.tracker import tracker_client
+        return {"peers": tracker_client.get_online_peers()}
+    except Exception as e:
+        return {"peers": [], "error": str(e)}
+
+@router.get("/tracker/files")
+def search_tracker_files(q: Optional[str] = None):
+    """Search for shared files across all online peers via central tracker."""
+    try:
+        from app.tracker import tracker_client
+        return {"files": tracker_client.search_files(q)}
+    except Exception as e:
+        return {"files": [], "error": str(e)}
+
+@router.post("/tracker/announce")
+def announce_shared_files_now():
+    """Manually trigger broadcast of shared folder to tracker."""
+    try:
+        from app.tracker import tracker_client
+        announced = tracker_client.announce_shared_directory()
+        return {"status": "announced", "files": announced}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/tracker/download")
+def download_file_from_peer(
+    peer_host: str = Form(...),
+    peer_port: int = Form(...),
+    file_path_or_name: str = Form(...)
+):
+    """
+    Request download of a file discovered from tracker by connecting directly to the peer.
+    """
+    # Direct peer transfer initiation
+    transfer_id = transfer_manager.send_file_async(file_path_or_name, peer_host, peer_port)
+    return {"status": "started", "transfer_id": transfer_id}
+
 @router.websocket("/ws/transfers")
 async def websocket_transfers(websocket: WebSocket):
     await websocket.accept()

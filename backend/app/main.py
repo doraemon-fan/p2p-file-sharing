@@ -15,15 +15,22 @@ from contextlib import asynccontextmanager
 from app.config import config
 from app.transfer.manager import transfer_manager
 from app.api.routes import router as api_router
+from app.tracker import tracker_client
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Start receiver socket daemon on startup
     transfer_manager.start_receiver_daemon()
     print(f"PeerShare background receiver listening on port {config.p2p_port}...")
+    
+    # Start tracker heartbeat & announcement background loop
+    tracker_client.start_heartbeat_loop(interval=15.0)
+    print(f"PeerShare connected to tracker at {config.tracker_url}...")
+    
     yield
     # Cleanup on shutdown
     transfer_manager.stop()
+    tracker_client.stop()
     print("PeerShare backend stopped.")
 
 app = FastAPI(

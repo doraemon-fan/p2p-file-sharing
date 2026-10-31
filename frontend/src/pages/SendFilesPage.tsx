@@ -12,13 +12,15 @@ import type { TransferItem } from '../types';
 
 interface SendFilesProps {
   transfers: TransferItem[];
+  initialTargetHost?: string;
+  initialTargetPort?: number;
 }
 
-export const SendFilesPage: React.FC<SendFilesProps> = ({ transfers }) => {
+export const SendFilesPage: React.FC<SendFilesProps> = ({ transfers, initialTargetHost, initialTargetPort }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [localPath, setLocalPath] = useState<string>('');
-  const [peerHost, setPeerHost] = useState<string>('127.0.0.1');
-  const [peerPort, setPeerPort] = useState<number>(5000);
+  const [peerHost, setPeerHost] = useState<string>(initialTargetHost || '127.0.0.1');
+  const [peerPort, setPeerPort] = useState<number>(initialTargetPort || 5000);
   const [isSending, setIsSending] = useState<boolean>(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
