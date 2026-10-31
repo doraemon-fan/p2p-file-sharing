@@ -1,79 +1,42 @@
-import socket
-import json
+"""
+CLI wrapper for receiving files using the updated robust networking protocol.
+Backwards compatible with the original receiver usage.
+"""
+import sys
+import os
+from backend.app.networking.receiver import FileReceiver
 
-def receive_exactly(connection, number_of_bytes):
-    data = b""
+def main():
+    host = "0.0.0.0"
+    port = 5000
+    downloads_dir = "downloads"
 
-    while len(data) < number_of_bytes:
-        chunk = connection.recv(
-            number_of_bytes - len(data)
-        )
+    if len(sys.argv) > 1:
+        port = int(sys.argv[1])
+    if len(sys.argv) > 2:
+        downloads_dir = sys.argv[2]
 
-        if not chunk:
-            raise ConnectionError("Connection closed early")
+    os.makedirs(downloads_dir, exist_ok=True)
+    receiver = FileReceiver(host=host, port=port, destination_dir=downloads_dir)
+    print(f"Waiting for incoming connection on {host}:{port} (Saving to '{downloads_dir}')...")
 
-        data += chunk
+    def on_progress(rec, total, speed):
+        pct = (rec / total * 100) if total > 0 else 100
+        speed_mb = speed / (1024 * 1024)
+        print(f"\rReceiving: {pct:.1f}% ({rec}/{total} bytes) - {speed_mb:.2f} MB/s", end="", flush=True)
 
-    return data
+    try:
+        result = receiver.accept_one_file(progress_callback=on_progress)
+        print("\nFile received successfully!")
+        print(f"Saved to: {result['file_path']}")
+        print(f"SHA-256: {result['sha256']}")
+        print(f"Duration: {result['duration_seconds']:.2f}s (Average: {result['average_speed_mbps']:.2f} MB/s)")
+    except KeyboardInterrupt:
+        print("\nReceiver stopped by user.")
+    except Exception as e:
+        print(f"\nReceive failed: {e}")
+    finally:
+        receiver.stop()
 
-HOST = "127.0.0.1"
-PORT = 5000
-
-server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-server.bind((HOST, PORT))
-server.listen()
-
-print(f"Waiting for connection on {HOST}:{PORT}...")
-
-connection, address = server.accept()
-
-print("Connected by: ", address)
-
-length_bytes = receive_exactly(connection, 4)
-
-# print("Raw length bytes:", length_bytes)
-
-metadata_length = int.from_bytes(
-    length_bytes,
-    byteorder="big"
-)
-
-# print("Metadata length:", metadata_length)
-
-metadata_bytes = receive_exactly(
-    connection,
-    metadata_length
-)
-
-# print("Raw metadata:", metadata_bytes)
-
-metadata = json.loads(metadata_bytes.decode("utf-8"))
-
-# print("Metadata:", metadata)
-
-filename = metadata["filename"]
-file_size = metadata["size"]
-
-filename = "received_" + filename
-
-with open(filename, "wb") as file:
-    received = 0
-    while received < file_size:
-        remaining = file_size - received
-        chunk = connection.recv(min(4096, remaining))
-
-        if not chunk:
-            raise ConnectionError("Connection closed before file was completely received")
-
-        file.write(chunk)
-        received += len(chunk)
-
-print("File received successfully.")
-
-# print("Received: ", data.decode())
-# with open("received.txt", "wb") as file:
-#     file.write(data)
-
-connection.close()
-server.close()
+if __name__ == "__main__":
+    main()

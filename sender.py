@@ -1,50 +1,42 @@
-import socket
-import json
+"""
+CLI wrapper for sending files using the updated robust networking protocol.
+Backwards compatible with the original sender usage.
+"""
+import sys
 import os
+from backend.app.networking.sender import FileSender
 
-HOST = "127.0.0.1"
-PORT = 5000
+def main():
+    host = "127.0.0.1"
+    port = 5000
+    file_path = "test.txt"
 
-client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    if len(sys.argv) > 1:
+        file_path = sys.argv[1]
+    if len(sys.argv) > 2:
+        host = sys.argv[2]
+    if len(sys.argv) > 3:
+        port = int(sys.argv[3])
 
-client.connect((HOST, PORT))
+    if not os.path.exists(file_path):
+        print(f"Error: File '{file_path}' does not exist.")
+        return
 
-file_path = "wwy.mkv"
-file_size = os.path.getsize(file_path)
+    print(f"Sending '{file_path}' ({os.path.getsize(file_path)} bytes) to {host}:{port}...")
 
-metadata = {
-    "filename": os.path.basename(file_path),
-    "size": file_size
-}
+    def on_progress(sent, total, speed):
+        pct = (sent / total * 100) if total > 0 else 100
+        speed_mb = speed / (1024 * 1024)
+        print(f"\rProgress: {pct:.1f}% ({sent}/{total} bytes) - {speed_mb:.2f} MB/s", end="", flush=True)
 
-metadata_bytes = json.dumps(metadata).encode("utf-8")
+    sender = FileSender(host=host, port=port)
+    try:
+        result = sender.send_file(file_path, progress_callback=on_progress)
+        print("\nFile sent successfully!")
+        print(f"SHA-256: {result['sha256']}")
+        print(f"Duration: {result['duration_seconds']:.2f}s (Average: {result['average_speed_mbps']:.2f} MB/s)")
+    except Exception as e:
+        print(f"\nTransfer failed: {e}")
 
-# print(metadata_bytes)
-
-metadata_length = len(metadata_bytes)
-
-# print("Metadata:", metadata)
-# print("Metadata bytes:", metadata_bytes)
-# print("Metadata length:", metadata_length)
-
-length_bytes = metadata_length.to_bytes(4, byteorder="big")
-
-client.sendall(length_bytes)
-client.sendall(metadata_bytes)
-
-with open(file_path, "rb") as file:
-    while True:
-        chunk = file.read(4096)
-        if not chunk:
-            break
-        client.sendall(chunk)
-
-print("File sent successfully.")
-
-# with open("test.txt", "rb") as file:
-#     data = file.read()
-
-# client.sendall(data)
-# client.sendall(b"Hello from Peer A!")
-
-client.close()
+if __name__ == "__main__":
+    main()
