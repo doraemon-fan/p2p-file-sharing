@@ -115,6 +115,9 @@ def get_settings():
 
 @router.post("/settings")
 def update_settings(updates: SettingsUpdate):
+    from app.tracker import tracker_client
+    tracker_url_changed = updates.tracker_url and updates.tracker_url != config.tracker_url
+
     if updates.peer_name:
         config.peer_name = updates.peer_name
     if updates.downloads_dir:
@@ -124,8 +127,11 @@ def update_settings(updates: SettingsUpdate):
         config.shared_dir = os.path.abspath(updates.shared_dir)
         os.makedirs(config.shared_dir, exist_ok=True)
     if updates.tracker_url:
-        config.tracker_url = updates.tracker_url
+        # This also re-registers immediately with the new tracker
+        tracker_client.update_tracker_url(updates.tracker_url)
+
     return {"status": "updated", "config": config.model_dump()}
+
 
 @router.get("/tracker/peers")
 def get_tracker_peers():

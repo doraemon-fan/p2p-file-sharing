@@ -95,9 +95,24 @@ export const SettingsPage: React.FC = () => {
             type="text"
             value={trackerUrl}
             onChange={(e) => setTrackerUrl(e.target.value)}
+            placeholder="http://192.168.1.x:8001"
             className="w-full bg-slate-950/80 border border-slate-800 rounded-xl px-3.5 py-2.5 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 font-mono text-xs"
           />
-          <p className="text-xs text-slate-500 mt-1">Configured for Phase 2 tracker discovery.</p>
+          <div className="mt-2 space-y-1">
+            <p className="text-xs text-slate-500">
+              🌐 <strong className="text-slate-400">To share with someone else:</strong> one person runs the tracker, everyone else points here.
+            </p>
+            <p className="text-xs text-slate-500">
+              📋 <strong className="text-slate-400">If you're the tracker host:</strong> tell others to set this to{' '}
+              <code className="bg-slate-800 text-emerald-400 px-1.5 py-0.5 rounded text-[11px]">
+                http://YOUR-LAN-IP:8001
+              </code>
+              {' '}(find your IP with <code className="bg-slate-800 text-slate-300 px-1 rounded text-[11px]">ipconfig</code> on Windows)
+            </p>
+            <p className="text-xs text-slate-500">
+              🔄 Saving will immediately re-register your node with the new tracker — no restart needed.
+            </p>
+          </div>
         </div>
 
         <div className="pt-2">

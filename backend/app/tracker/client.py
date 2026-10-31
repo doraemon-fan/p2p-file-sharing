@@ -19,15 +19,38 @@ class TrackerClient:
         self._running = False
         self._heartbeat_thread: Optional[threading.Thread] = None
 
+    def _get_lan_ip(self) -> str:
+        """
+        Detect the machine's own LAN IP by opening a UDP socket toward the tracker host.
+        This doesn't actually send any data — it just finds which local interface
+        the OS would route through to reach the tracker. Falls back to 127.0.0.1.
+        """
+        import socket
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(self.tracker_url)
+            tracker_host = parsed.hostname or "8.8.8.8"
+            tracker_port = parsed.port or 80
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.settimeout(1.0)
+                s.connect((tracker_host, tracker_port))
+                return s.getsockname()[0]
+        except Exception:
+            return "127.0.0.1"
+
     def register(self) -> Dict[str, Any]:
         url = f"{self.tracker_url}/peers/register"
+        own_ip = self._get_lan_ip()
         payload = {
             "peer_id": config.peer_id,
             "peer_name": config.peer_name,
+            "host": own_ip,          # always send our real LAN IP explicitly
             "port": config.p2p_port
         }
         res = requests.post(url, json=payload, timeout=5.0)
         res.raise_for_status()
+        print(f"[TrackerClient] Registered as '{config.peer_name}' ({config.peer_id}) "
+              f"at {own_ip}:{config.p2p_port} → tracker {self.tracker_url}")
         return res.json()
 
     def send_heartbeat(self) -> bool:
@@ -35,6 +58,17 @@ class TrackerClient:
         payload = {"peer_id": config.peer_id}
         res = requests.post(url, json=payload, timeout=3.0)
         return res.status_code == 200
+
+    def update_tracker_url(self, new_url: str):
+        """Change tracker URL at runtime and immediately re-register + re-announce."""
+        self.tracker_url = new_url
+        config.tracker_url = new_url
+        try:
+            self.register()
+            self.announce_shared_directory()
+            print(f"[TrackerClient] Re-registered with new tracker: {new_url}")
+        except Exception as e:
+            print(f"[TrackerClient] Re-registration warning after URL change: {e}")
 
     def start_heartbeat_loop(self, interval: float = 15.0):
         if self._running:
