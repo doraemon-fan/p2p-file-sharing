@@ -22,6 +22,23 @@ export async function announceSharedFiles(): Promise<void> {
   if (!res.ok) throw new Error('Failed to announce files');
 }
 
+export async function downloadChunkedFile(peerHost: string, peerPort: number, fileIdentifier: string): Promise<{ transfer_id: string }> {
+  const formData = new FormData();
+  formData.append('peer_host', peerHost);
+  formData.append('peer_port', peerPort.toString());
+  formData.append('file_identifier', fileIdentifier);
+
+  const res = await fetch(`${API_BASE}/chunks/download`, {
+    method: 'POST',
+    body: formData,
+  });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({ detail: 'Download initiation failed' }));
+    throw new Error(errorData.detail || 'Download failed');
+  }
+  return res.json();
+}
+
 export async function fetchStatus(): Promise<NodeStatus> {
   const res = await fetch(`${API_BASE}/status`);
   if (!res.ok) throw new Error('Failed to fetch status');

@@ -16,6 +16,13 @@ from app.config import config
 from app.transfer.manager import transfer_manager
 from app.api.routes import router as api_router
 from app.tracker import tracker_client
+from app.transfer.chunk_protocol import ChunkPeerServer
+
+chunk_server = ChunkPeerServer(
+    host="0.0.0.0",
+    port=config.chunk_port,
+    shared_dir=config.shared_dir
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -23,6 +30,10 @@ async def lifespan(app: FastAPI):
     transfer_manager.start_receiver_daemon()
     print(f"PeerShare background receiver listening on port {config.p2p_port}...")
     
+    # Start Phase 3 chunk server daemon
+    chunk_server.start()
+    print(f"PeerShare Chunk server listening on port {config.chunk_port}...")
+
     # Start tracker heartbeat & announcement background loop
     tracker_client.start_heartbeat_loop(interval=15.0)
     print(f"PeerShare connected to tracker at {config.tracker_url}...")
@@ -30,6 +41,7 @@ async def lifespan(app: FastAPI):
     yield
     # Cleanup on shutdown
     transfer_manager.stop()
+    chunk_server.stop()
     tracker_client.stop()
     print("PeerShare backend stopped.")
 

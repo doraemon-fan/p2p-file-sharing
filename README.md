@@ -11,8 +11,8 @@ A high-performance Peer-to-Peer file sharing application built with a Python TCP
 | **Phase 1** | **Audit & Core TCP Transfer Protocol** (Framing, SHA-256 integrity, safe filenames, overwrite avoidance, connection cleanup) | ✅ **Completed** |
 | **Phase 7** | **React UI Implementation** (Dark-themed dashboard, Send/Receive, WebSockets, REST API, SQLite history) | ✅ **Completed** |
 | **Phase 2** | **Tracker-Based Peer Discovery** (Peer registration, file announcements, healthchecks, file search) | ✅ **Completed** |
-| **Phase 3** | **File Chunking & Resumable Transfers** (Logical chunk manifests, chunk integrity, resume interrupted downloads) | ⏳ Next |
-| **Phase 4** | **Multiple Peers & Swarming** (Concurrent multi-peer downloads, peer scheduling, chunk distribution) | ⏳ Pending |
+| **Phase 3** | **File Chunking & Resumable Transfers** (Logical chunk manifests, chunk integrity, resume interrupted downloads) | ✅ **Completed** |
+| **Phase 4** | **Multiple Peers & Swarming** (Concurrent multi-peer downloads, peer scheduling, chunk distribution) | ⏳ Next |
 
 ---
 

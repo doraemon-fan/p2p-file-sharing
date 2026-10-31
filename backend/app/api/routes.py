@@ -1,13 +1,15 @@
 import os
 import shutil
+import uuid
+import time
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import asyncio
 
 from app.config import config
-from app.transfer.manager import transfer_manager
-from app.database.db import get_history
+from app.transfer.manager import transfer_manager, TransferState
+from app.database.db import get_history, log_transfer
 from app.networking import calculate_file_hash
 
 router = APIRouter()
@@ -164,6 +166,90 @@ def download_file_from_peer(
     """
     # Direct peer transfer initiation
     transfer_id = transfer_manager.send_file_async(file_path_or_name, peer_host, peer_port)
+    return {"status": "started", "transfer_id": transfer_id}
+
+@router.post("/chunks/download")
+def download_chunked_file(
+    peer_host: str = Form(...),
+    peer_port: int = Form(...),
+    file_identifier: str = Form(...)
+):
+    """
+    Initiate Phase 3 chunked & resumable download from a peer.
+    """
+    from app.transfer.chunk_protocol import ChunkClientDownloader
+    import threading
+
+    transfer_id = f"chunk-{uuid.uuid4().hex[:8]}"
+    state = TransferState(
+        id=transfer_id,
+        filename=file_identifier,
+        direction="download",
+        total_bytes=0,
+        transferred_bytes=0,
+        speed_bytes_sec=0,
+        progress_percent=0,
+        status="active",
+        peer_address=f"{peer_host}:{peer_port}",
+        start_time=time.time()
+    )
+    transfer_manager.active_transfers[transfer_id] = state
+
+    def run_chunk_download():
+        downloader = ChunkClientDownloader(
+            peer_host=peer_host,
+            peer_port=peer_port,
+            downloads_dir=config.downloads_dir
+        )
+
+        def on_prog(info):
+            state.transferred_bytes = info.get("downloaded_bytes", 0)
+            state.total_bytes = info.get("total_bytes", 0)
+            state.progress_percent = info.get("progress_percent", 0)
+            elapsed = max(time.time() - state.start_time, 0.001)
+            state.speed_bytes_sec = state.transferred_bytes / elapsed
+            state.elapsed_time = elapsed
+            transfer_manager.broadcast_sync()
+
+        try:
+            res = downloader.download_file(file_identifier, progress_callback=on_prog)
+            state.status = "completed"
+            state.sha256 = res.get("sha256")
+            state.filename = res.get("filename")
+            state.progress_percent = 100.0
+            state.speed_bytes_sec = 0.0
+            transfer_manager.total_downloaded += state.total_bytes
+            log_transfer(
+                transfer_id=transfer_id,
+                filename=state.filename,
+                direction="download",
+                file_size=state.total_bytes,
+                peer_address=state.peer_address,
+                sha256=state.sha256 or "",
+                status="completed",
+                duration=time.time() - state.start_time,
+                average_speed=state.speed_bytes_sec / (1024 * 1024),
+                timestamp=time.time()
+            )
+        except Exception as e:
+            state.status = "failed"
+            state.error = str(e)
+            log_transfer(
+                transfer_id=transfer_id,
+                filename=state.filename,
+                direction="download",
+                file_size=state.total_bytes,
+                peer_address=state.peer_address,
+                sha256="",
+                status="failed",
+                duration=time.time() - state.start_time,
+                average_speed=0.0,
+                timestamp=time.time()
+            )
+        finally:
+            transfer_manager.broadcast_sync()
+
+    threading.Thread(target=run_chunk_download, daemon=True).start()
     return {"status": "started", "transfer_id": transfer_id}
 
 @router.websocket("/ws/transfers")

@@ -6,6 +6,7 @@ class AppConfig(BaseModel):
     peer_id: str = Field(default_factory=lambda: f"peer-{uuid.uuid4().hex[:8]}")
     peer_name: str = "Peer-Local"
     p2p_port: int = 5000
+    chunk_port: int = 5002
     api_port: int = 8000
     downloads_dir: str = os.path.abspath("downloads")
     shared_dir: str = os.path.abspath("shared")

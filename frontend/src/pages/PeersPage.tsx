@@ -7,9 +7,10 @@ import {
   Send, 
   AlertCircle,
   FileBox,
-  HardDrive
+  HardDrive,
+  Download
 } from 'lucide-react';
-import { fetchTrackerPeers, fetchTrackerFiles, formatBytes } from '../services/api';
+import { fetchTrackerPeers, fetchTrackerFiles, formatBytes, downloadChunkedFile } from '../services/api';
 import type { NodeStatus, TrackerPeer, TrackerFile } from '../types';
 
 interface PeersPageProps {
@@ -148,8 +149,22 @@ export const PeersPage: React.FC<PeersPageProps> = ({ status, onSelectPeerForSen
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <span className="text-xs font-mono text-slate-300">{formatBytes(file.file_size)}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-mono text-slate-300 mr-2">{formatBytes(file.file_size)}</span>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await downloadChunkedFile(file.host, 5002, file.filename);
+                            alert(`Initiated chunked download for ${file.filename}`);
+                          } catch (err: any) {
+                            alert(err.message);
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-medium transition flex items-center gap-1.5 shadow-md shadow-emerald-600/20"
+                      >
+                        <Download className="h-3 w-3" />
+                        Download
+                      </button>
                       {onSelectPeerForSend && (
                         <button
                           onClick={() => onSelectPeerForSend(file.host, file.port)}
